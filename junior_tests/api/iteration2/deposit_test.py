@@ -96,6 +96,28 @@ class TestDeposit:
         assert deposit_response.json().get('balance') == new_balance
         assert deposit_response.json().get('transactions') is not None
 
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token
+            }
+        )
+
+        assert get_user_profile_response.status_code == 200
+
+        accounts = get_user_profile_response.json().get('accounts')
+
+        account = None
+
+        for current_account in accounts:
+            if current_account.get('id') == account_id:
+                account = current_account
+                break
+
+        assert account is not None
+        assert account.get('balance') == pytest.approx(new_balance)
+
     # Тест на неудачный депозит с невалидными суммами
     @pytest.mark.parametrize(
         'amount, error_message',
@@ -133,6 +155,28 @@ class TestDeposit:
         assert deposit_response.status_code == 400
         assert deposit_response.text == error_message
 
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token
+            }
+        )
+        
+        assert get_user_profile_response.status_code == 200
+        
+        accounts = get_user_profile_response.json().get('accounts')
+        
+        account = None
+        
+        for current_account in accounts:
+            if current_account.get('id') == account_id:
+                account = current_account
+                break
+        
+        assert account is not None
+        assert account.get('balance') == 0
+
     # Тест на неудачный депозит на несуществующий account
     def test_user_cannot_deposit_to_nonexistent_account(self):
         username = self.generate_unique_username()
@@ -166,6 +210,37 @@ class TestDeposit:
         assert deposit_response.status_code == 403
         assert deposit_response.text == 'Unauthorized access to account'
 
+        get_user_profile_response = requests.get(
+                    url='http://localhost:4111/api/v1/customer/profile',
+                    headers={
+                        'Accept': 'application/json',
+                        'Authorization': auth_token
+                    }
+                )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id:
+                account = current_account
+                break
+                
+        assert account is not None
+        assert account.get('balance') == 0
+
+        non_existent_account = None
+
+        for current_account in accounts:
+            if current_account.get('id') == non_existent_account_id:
+                non_existent_account = current_account
+                break
+
+        assert non_existent_account is None
+
     # Тест на неудачный депозит с невалидным токеном авторизации
     def test_user_cannot_deposit_with_invalid_auth_token(self):
         username = self.generate_unique_username()
@@ -198,6 +273,28 @@ class TestDeposit:
 
         assert deposit_response.status_code == 401
 
+        get_user_profile_response = requests.get(
+                    url='http://localhost:4111/api/v1/customer/profile',
+                    headers={
+                        'Accept': 'application/json',
+                        'Authorization': auth_token
+                    }
+                )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id:
+                account = current_account
+                break
+                
+        assert account is not None
+        assert account.get('balance') == 0
+
     # Тест на неудачный депозит с отсутствующим токеном авторизации
     def test_user_cannot_deposit_without_auth_token(self):
         username = self.generate_unique_username()
@@ -225,3 +322,25 @@ class TestDeposit:
         )
 
         assert deposit_response.status_code == 401
+
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id:
+                account = current_account
+                break
+                
+        assert account is not None
+        assert account.get('balance') == 0

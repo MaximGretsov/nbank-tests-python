@@ -99,6 +99,8 @@ class TestTransfer:
         self.deposit_to_account(auth_token_sender, account_id_sender)
         self.deposit_to_account(auth_token_sender, account_id_sender)
 
+        sender_balance_before_transfer = 15000
+
         username_receiver = self.generate_unique_username()
 
         # create receiver user
@@ -128,7 +130,53 @@ class TestTransfer:
         assert transfer_response.json().get('amount') == expected_amount
         assert transfer_response.json().get('receiverAccountId') == account_id_receiver
         assert transfer_response.json().get('senderAccountId') == account_id_sender
-    
+
+        # Проверяем баланс оправителя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_sender
+            }
+        )
+        
+        assert get_user_profile_response.status_code == 200
+        
+        accounts = get_user_profile_response.json().get('accounts')
+        
+        sender_account = None
+        
+        for current_account in accounts:
+            if current_account.get('id') == account_id_sender:
+                sender_account = current_account
+                break
+        
+        assert sender_account is not None
+        assert sender_account.get('balance') == pytest.approx(sender_balance_before_transfer - amount)
+
+        # Проверяем баланс получателя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_receiver
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        receiver_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_receiver:
+                receiver_account = current_account
+                break
+                
+        assert receiver_account is not None
+        assert receiver_account.get('balance') == pytest.approx(amount)
+
     # Позитивный тест на трансфер между своими аккаунтами
     def test_user_can_transfer_between_own_accounts(self):
         username = self.generate_unique_username()
@@ -148,6 +196,8 @@ class TestTransfer:
         self.deposit_to_account(auth_token, account_id_sender)
         self.deposit_to_account(auth_token, account_id_sender)
         self.deposit_to_account(auth_token, account_id_sender)
+
+        sender_balance_before_transfer = 15000
 
         transfer_amount = 100
         expected_amount = 100
@@ -170,6 +220,40 @@ class TestTransfer:
         assert transfer_response.json().get('amount') == expected_amount
         assert transfer_response.json().get('receiverAccountId') == account_id_receiver
         assert transfer_response.json().get('senderAccountId') == account_id_sender
+
+        # Проверяем баланс оправителя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        sender_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_sender:
+                sender_account = current_account
+                break
+                
+        assert sender_account is not None
+        assert sender_account.get('balance') == pytest.approx(sender_balance_before_transfer - expected_amount)
+
+        # Проверяем баланс получателя после трансфера
+        receiver_account = None
+
+        for current_account in accounts:
+            if current_account.get('id') == account_id_receiver:
+                receiver_account = current_account
+                break
+
+        assert receiver_account is not None
+        assert receiver_account.get('balance') == pytest.approx(expected_amount)
 
     # Негативный тест c невалидной суммой трансфера
     @pytest.mark.parametrize(
@@ -197,6 +281,8 @@ class TestTransfer:
         # deposit to sender account
         self.deposit_to_account(auth_token_sender, account_id_sender)
 
+        sender_balance_before_transfer = 5000
+
         transfer_response = requests.post(
             url='http://localhost:4111/api/v1/accounts/transfer',
             json={
@@ -213,6 +299,40 @@ class TestTransfer:
 
         assert transfer_response.status_code == 400
         assert transfer_response.text == error_message
+
+        # Проверяем баланс оправителя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_sender
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        sender_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_sender:
+                sender_account = current_account
+                break
+                
+        assert sender_account is not None
+        assert sender_account.get('balance') == pytest.approx(sender_balance_before_transfer)
+
+        # Проверяем баланс получателя после трансфера
+        receiver_account = None
+
+        for current_account in accounts:
+            if current_account.get('id') == account_id_receiver:
+                receiver_account = current_account
+                break
+
+        assert receiver_account is not None
+        assert receiver_account.get('balance') == 0
         
     # Негативный тест: трансфер на несуществующий аккаунт
     def test_user_cannot_transfer_to_nonexistent_account(self):
@@ -229,6 +349,8 @@ class TestTransfer:
 
         # deposit to sender account
         self.deposit_to_account(auth_token_sender, account_id_sender)
+
+        sender_balance_before_transfer = 5000
 
         # create a non-existent account id
         non_existent_account_id = account_id_sender + 1000000
@@ -249,6 +371,29 @@ class TestTransfer:
 
         assert transfer_response.status_code == 400
         assert transfer_response.text == "Invalid transfer: insufficient funds or invalid accounts"
+
+        # Проверяем баланс оправителя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_sender
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        sender_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_sender:
+                sender_account = current_account
+                break
+                
+        assert sender_account is not None
+        assert sender_account.get('balance') == pytest.approx(sender_balance_before_transfer)
 
     # Негативный тест: трансфер с несуществующего аккаунта
     def test_user_cannot_transfer_from_nonexistent_account(self):
@@ -283,6 +428,29 @@ class TestTransfer:
         assert transfer_response.status_code == 403
         assert transfer_response.text == "Unauthorized access to account"
 
+        # Проверяем баланс получателя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_receiver
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        receiver_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_receiver:
+                receiver_account = current_account
+                break
+                
+        assert receiver_account is not None
+        assert receiver_account.get('balance') == 0
+
     # Негативный тест: трансфер с чужого аккаунта
     def test_user_cannot_transfer_from_another_users_account(self):
         username_sender = self.generate_unique_username()
@@ -298,6 +466,8 @@ class TestTransfer:
 
         # deposit to sender account
         self.deposit_to_account(auth_token_sender, account_id_sender)
+
+        sender_balance_before_transfer = 5000
 
         username_receiver = self.generate_unique_username()
 
@@ -327,6 +497,52 @@ class TestTransfer:
         assert transfer_response.status_code == 403
         assert transfer_response.text == "Unauthorized access to account"
 
+        # Проверяем баланс оправителя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_sender
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        sender_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_sender:
+                sender_account = current_account
+                break
+                
+        assert sender_account is not None
+        assert sender_account.get('balance') == pytest.approx(sender_balance_before_transfer)
+
+         # Проверяем баланс получателя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_receiver
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        receiver_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_receiver:
+                receiver_account = current_account
+                break
+                
+        assert receiver_account is not None
+        assert receiver_account.get('balance') == 0
+        
     # Негативный тест: трансфер с некорректным токеном авторизации
     def test_user_cannot_transfer_with_invalid_authorization(self):
         username_sender = self.generate_unique_username()
@@ -344,6 +560,8 @@ class TestTransfer:
 
         # deposit to sender account
         self.deposit_to_account(auth_token_sender, account_id_sender)
+
+        sender_balance_before_transfer = 5000
 
         # create an invalid auth token
         invalid_auth_token = auth_token_sender[:-5]
@@ -363,6 +581,40 @@ class TestTransfer:
         )
 
         assert transfer_response.status_code == 401
+
+         # Проверяем баланс оправителя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_sender
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        sender_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_sender:
+                sender_account = current_account
+                break
+                
+        assert sender_account is not None
+        assert sender_account.get('balance') == pytest.approx(sender_balance_before_transfer)
+
+        # Проверяем баланс получателя после трансфера
+        receiver_account = None
+
+        for current_account in accounts:
+            if current_account.get('id') == account_id_receiver:
+                receiver_account = current_account
+                break
+
+        assert receiver_account is not None
+        assert receiver_account.get('balance') == 0
     
     # Негативный тест: трансфер без токена авторизации
     def test_user_cannot_transfer_without_authorization(self):
@@ -382,6 +634,8 @@ class TestTransfer:
         # deposit to sender account
         self.deposit_to_account(auth_token_sender, account_id_sender)
 
+        sender_balance_before_transfer = 5000
+
         transfer_response = requests.post(
             url='http://localhost:4111/api/v1/accounts/transfer',
             json={
@@ -396,3 +650,37 @@ class TestTransfer:
         )
 
         assert transfer_response.status_code == 401
+
+         # Проверяем баланс оправителя после трансфера
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token_sender
+            }
+        )
+                
+        assert get_user_profile_response.status_code == 200
+                
+        accounts = get_user_profile_response.json().get('accounts')
+                
+        sender_account = None
+                
+        for current_account in accounts:
+            if current_account.get('id') == account_id_sender:
+                sender_account = current_account
+                break
+                
+        assert sender_account is not None
+        assert sender_account.get('balance') == pytest.approx(sender_balance_before_transfer)
+
+        # Проверяем баланс получателя после трансфера
+        receiver_account = None
+
+        for current_account in accounts:
+            if current_account.get('id') == account_id_receiver:
+                receiver_account = current_account
+                break
+
+        assert receiver_account is not None
+        assert receiver_account.get('balance') == 0

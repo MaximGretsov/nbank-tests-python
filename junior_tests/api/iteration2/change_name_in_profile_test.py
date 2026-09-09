@@ -3,6 +3,8 @@ import requests
 import time
 
 class TestChangeNameInProfile:
+    INITIAL_NAME = None
+
     # Получение уникального имени пользователя
     def generate_unique_username(self):
         timestamp = int(time.time() * 1000) % 100_000_000
@@ -71,27 +73,38 @@ class TestChangeNameInProfile:
         assert change_name_response.json().get('customer').get('name') == new_name
         assert change_name_response.json().get('message') == 'Profile updated successfully'
 
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token
+            }
+        )
+
+        assert get_user_profile_response.status_code == 200
+        assert get_user_profile_response.json().get('name') == new_name
+
     # Тест на неудачное изменение имени в профиле с некорректными значениями
     @pytest.mark.parametrize(
         'new_incorrect_name',
         [# одно слово в поле name
-        ('Name'),
+        'Name',
         # три слова в поле name
-        ('Three word name'),
+        'Three word name',
         # пробел перед двумя словами в имени
-        (' New Name'),
+        ' New Name',
         # пробел после двух слов в имени
-        ('New Name '),
+        'New Name ',
         # имя из пробелов
-        ('   '),
+        '   ',
         # имя из двух слов со специальными знаками
-        ('New Nam?e'),
+        'New Nam?e',
         # имя из двух слов с цифрами
-        ('New Na1me'),
+        'New Na1me',
         # имя из двух слов с дефисом
-        ('New John-Doe'),
+        'New John-Doe',
         # имя из двух слов с двумя пробелами между словами
-        ('New  Name')
+        'New  Name'
         ]
     )   
 
@@ -119,12 +132,26 @@ class TestChangeNameInProfile:
         assert change_name_response.status_code == 400
         assert change_name_response.text == 'Name must contain two words with letters only'
 
+        get_user_profile_response = requests.get(
+                url='http://localhost:4111/api/v1/customer/profile',
+                headers={
+                    'Accept': 'application/json',
+                    'Authorization': auth_token
+                }
+            )
+    
+        assert get_user_profile_response.status_code == 200
+        assert get_user_profile_response.json().get('name') == self.INITIAL_NAME
+
     # Тест на изменение имени в профиле без авторизации
     def test_change_name_in_profile_without_authorization(self):
         username = self.generate_unique_username()
                        
         # create user
-        self.create_user(username)   
+        self.create_user(username)  
+
+        #login user
+        auth_token = self.login_user(username) 
 
         change_name_response = requests.put(
             url = 'http://localhost:4111/api/v1/customer/profile',
@@ -139,6 +166,17 @@ class TestChangeNameInProfile:
             
         assert change_name_response.status_code == 401
 
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token
+            }
+        )
+            
+        assert get_user_profile_response.status_code == 200
+        assert get_user_profile_response.json().get('name') == self.INITIAL_NAME
+
     # Тест на изменение имени в профиле с некорректным токеном авторизации
     def test_change_name_in_profile_with_incorrect_authorization(self):
         username = self.generate_unique_username()
@@ -147,7 +185,10 @@ class TestChangeNameInProfile:
         self.create_user(username)   
                
         #login user
-        auth_token = self.login_user(username)[:-5]
+        auth_token = self.login_user(username)
+
+        # Убираем последние 5 символов токена, чтобы сделать его некорректным
+        broken_auth_token = auth_token[:-5]  
         
         change_name_response = requests.put(
             url = 'http://localhost:4111/api/v1/customer/profile',
@@ -157,8 +198,19 @@ class TestChangeNameInProfile:
             headers = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': auth_token
+                'Authorization': broken_auth_token
             }
         )
             
         assert change_name_response.status_code == 401
+
+        get_user_profile_response = requests.get(
+            url='http://localhost:4111/api/v1/customer/profile',
+            headers={
+                'Accept': 'application/json',
+                'Authorization': auth_token
+            }
+        )
+            
+        assert get_user_profile_response.status_code == 200
+        assert get_user_profile_response.json().get('name') == self.INITIAL_NAME
