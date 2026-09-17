@@ -1,0 +1,6 @@
+commands to run:
+
+cd /NBank-tests
+pytest -m api
+or 
+pytest -m "api and not debug" -s
