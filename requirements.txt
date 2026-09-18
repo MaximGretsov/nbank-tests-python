@@ -3,3 +3,4 @@ requests
 pydantic
 softest
 faker
+rstr
