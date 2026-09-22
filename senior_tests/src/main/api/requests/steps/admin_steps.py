@@ -2,6 +2,7 @@ from typing import Optional
 
 from src.main.api.generators.random_model_generator import RandomModelGenerator
 from src.main.api.models.create_user_request import CreateUserRequest
+from src.main.api.models.create_user_response import CreateUserResponse
 from src.main.api.models.login_user_request import LoginUserRequest
 from src.main.api.requests.skeleton.endpoint import Endpoint
 from src.main.api.requests.skeleton.requesters.validated_crud_requester import (
@@ -62,6 +63,13 @@ class AdminSteps(BaseSteps):
             Endpoint.LOGIN_USER,
             ResponseSpecs.request_returns_ok()
         ).post(login_user_request)
+
+    def get_all_users(self) -> list[CreateUserResponse]:
+        return ValidatedCrudRequester(
+            request_spec=RequestSpecs.admin_auth_spec(),
+            endpoint=Endpoint.ADMIN_GET_ALL_USERS,
+            response_spec=ResponseSpecs.request_returns_ok()
+        ).get()
 
     def delete_user(self, id: int):
         return CrudRequester(
