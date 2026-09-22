@@ -1,2 +1,5 @@
 pytest
 requests
+pydantic
+softest
+faker
