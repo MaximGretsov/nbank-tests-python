@@ -74,8 +74,14 @@ class UserDashboard(BasePage):
         return TransferPage(self.page)
 
     def open_edit_profile(self) -> EditProfilePage:
-        self.user_info.click()
+        with self.page.expect_response(
+            lambda response:
+            "/customer/profile" in response.url
+            and response.request.method == "GET"
+        ):
+            self.user_info.click()
 
+        self.page.wait_for_timeout(300)
         return EditProfilePage(self.page)
 
     def check_displayed_name(

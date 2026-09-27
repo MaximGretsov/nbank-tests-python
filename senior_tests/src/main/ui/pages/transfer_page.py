@@ -173,16 +173,10 @@ class TransferPage(BasePage):
 
         return self
 
-    def search_transactions(
-        self,
-        username: str
-    ):
-        self.transaction_search_input.fill(
-            username
-        )
-
+    def search_transactions(self, username: str):
+        self.transaction_search_input.fill("")
+        self.transaction_search_input.press_sequentially(username)
         self.search_transactions_button.click()
-
         return self
 
     def open_repeat_transfer_for(
