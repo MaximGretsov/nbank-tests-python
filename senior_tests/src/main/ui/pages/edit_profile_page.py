@@ -26,13 +26,9 @@ class EditProfilePage(BasePage):
     def url(self) -> str:
         return "/edit-profile"
 
-    def change_name(
-        self,
-        new_name: str
-    ):
+    def change_name(self, new_name: str):
         self.new_name_input.fill(new_name)
         self.save_changes_button.click()
-
         return self
 
     def open_user_dashboard(self):
